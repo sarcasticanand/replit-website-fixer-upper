@@ -124,7 +124,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground mb-2">
                     Upper body strength training - 45 minutes
                   </p>
-                  <Button size="sm">Start Workout</Button>
+                  <Button size="sm" onClick={() => navigate('/workout-plan')}>Start Workout</Button>
                 </div>
                 
                 <div className="border rounded-lg p-4">
@@ -140,7 +140,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground mb-2">
                     8 items ready for shopping - optimized for best prices
                   </p>
-                  <Button size="sm" variant="outline">View List</Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate('/grocery-cart')}>View List</Button>
                 </div>
               </CardContent>
             </Card>
@@ -156,13 +156,13 @@ export default function Dashboard() {
                 <Button className="w-full" variant="outline">
                   Log Food
                 </Button>
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="outline" onClick={() => navigate('/workout-plan')}>
                   Start Workout
                 </Button>
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="outline" onClick={() => navigate('/fridge')}>
                   Check Fridge
                 </Button>
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="outline" onClick={() => navigate('/grocery-cart')}>
                   Order Groceries
                 </Button>
               </CardContent>
