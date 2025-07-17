@@ -12,7 +12,7 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl font-bold mb-6">
-          Your Complete <span className="text-primary bg-gradient-primary bg-clip-text text-transparent">Health Journey</span>
+          Your Complete Health Journey <span className="text-primary bg-gradient-primary bg-clip-text text-transparent">Starts Here</span>
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           Connect your health goals to personalized fitness plans and automated grocery shopping. 

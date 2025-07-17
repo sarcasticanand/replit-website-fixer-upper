@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { generatePersonalizedPlans } from "@/services/perplexityService";
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,6 +29,8 @@ export default function Onboarding() {
     healthConditions: []
   });
 
+  const [apiKey, setApiKey] = useState("");
+
   const handleNext = () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
@@ -41,51 +44,47 @@ export default function Onboarding() {
   };
 
   const handleComplete = async () => {
+    if (!apiKey.trim()) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your Perplexity API key to generate personalized plans.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Simulate API call - this is where the 401 error was happening
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Simulate random success/failure for demo
-          if (Math.random() > 0.5) {
-            resolve("success");
-          } else {
-            // Simulate 401 error
-            reject(new Error("Authentication failed"));
-          }
-        }, 2000);
-      });
+      // Generate personalized plans using Perplexity API
+      const { workoutPlan, dietPlan } = await generatePersonalizedPlans(formData, apiKey);
 
-      // Success case
+      // Store user data and generated plans
+      const userProfileWithPlans = {
+        ...formData,
+        workoutPlan,
+        dietPlan,
+        createdAt: new Date().toISOString()
+      };
+
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('onboardingComplete', 'true');
-      localStorage.setItem('userProfile', JSON.stringify(formData));
+      localStorage.setItem('userProfile', JSON.stringify(userProfileWithPlans));
       
       toast({
         title: "Setup complete!",
-        description: "Your personalized health journey starts now.",
+        description: "Your personalized health plans have been generated!",
       });
       
       navigate('/dashboard');
     } catch (error) {
-      // Handle 401 error properly
       console.error("Setup failed:", error);
       
       toast({
         title: "Setup failed",
-        description: "Authentication failed. Please try logging in again.",
+        description: error instanceof Error ? error.message : "Failed to generate personalized plans. Please check your API key and try again.",
         variant: "destructive",
       });
-      
-      // Clear any existing auth state and redirect to login
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('tempUser');
-      
-      // Wait a moment before redirecting
-      setTimeout(() => {
-        navigate('/login', { replace: true });
-      }, 2000);
     } finally {
       setLoading(false);
     }
@@ -264,6 +263,24 @@ export default function Onboarding() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="apiKey">Perplexity API Key</Label>
+          <Input
+            id="apiKey"
+            type="password"
+            placeholder="Enter your Perplexity API key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="font-mono"
+          />
+          <p className="text-xs text-muted-foreground">
+            Required to generate personalized workout and diet plans. 
+            <a href="https://docs.perplexity.ai/docs/getting-started" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
+              Get your API key here
+            </a>
+          </p>
         </div>
       </CardContent>
     </Card>
