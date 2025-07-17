@@ -11,7 +11,7 @@ export default function Landing() {
       
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl font-bold mb-6">
+        <h1 className="text-5xl font-bold mb-6 text-center">
           Your Complete Health Journey <span className="text-primary bg-gradient-primary bg-clip-text text-transparent">Starts Here</span>
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
