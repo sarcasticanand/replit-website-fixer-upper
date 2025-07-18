@@ -14,6 +14,152 @@ export type Database = {
   }
   public: {
     Tables: {
+      diet_templates: {
+        Row: {
+          calorie_range: string
+          created_at: string
+          cuisine_type: string | null
+          dietary_restrictions: Json | null
+          id: string
+          meal_count: number
+          meal_plan: Json
+        }
+        Insert: {
+          calorie_range: string
+          created_at?: string
+          cuisine_type?: string | null
+          dietary_restrictions?: Json | null
+          id?: string
+          meal_count?: number
+          meal_plan: Json
+        }
+        Update: {
+          calorie_range?: string
+          created_at?: string
+          cuisine_type?: string | null
+          dietary_restrictions?: Json | null
+          id?: string
+          meal_count?: number
+          meal_plan?: Json
+        }
+        Relationships: []
+      }
+      generated_plans: {
+        Row: {
+          created_at: string
+          diet_plan: Json | null
+          grocery_list: Json | null
+          id: string
+          nutritional_breakdown: Json | null
+          plan_type: string
+          updated_at: string
+          user_id: string
+          user_preferences: Json | null
+          workout_plan: Json | null
+        }
+        Insert: {
+          created_at?: string
+          diet_plan?: Json | null
+          grocery_list?: Json | null
+          id?: string
+          nutritional_breakdown?: Json | null
+          plan_type: string
+          updated_at?: string
+          user_id: string
+          user_preferences?: Json | null
+          workout_plan?: Json | null
+        }
+        Update: {
+          created_at?: string
+          diet_plan?: Json | null
+          grocery_list?: Json | null
+          id?: string
+          nutritional_breakdown?: Json | null
+          plan_type?: string
+          updated_at?: string
+          user_id?: string
+          user_preferences?: Json | null
+          workout_plan?: Json | null
+        }
+        Relationships: []
+      }
+      grocery_items: {
+        Row: {
+          average_price: number | null
+          category: string
+          created_at: string
+          id: string
+          name: string
+          nutritional_info: Json
+          regional_names: Json | null
+          seasonal_availability: Json | null
+          substitutes: Json | null
+          unit: string
+        }
+        Insert: {
+          average_price?: number | null
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+          nutritional_info: Json
+          regional_names?: Json | null
+          seasonal_availability?: Json | null
+          substitutes?: Json | null
+          unit?: string
+        }
+        Update: {
+          average_price?: number | null
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          nutritional_info?: Json
+          regional_names?: Json | null
+          seasonal_availability?: Json | null
+          substitutes?: Json | null
+          unit?: string
+        }
+        Relationships: []
+      }
+      plan_feedback: {
+        Row: {
+          completion_percentage: number | null
+          created_at: string
+          feedback_text: string | null
+          id: string
+          plan_id: string
+          rating: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_percentage?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          plan_id: string
+          rating?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_percentage?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          plan_id?: string
+          rating?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_feedback_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "generated_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           activity_level: string | null
@@ -140,6 +286,39 @@ export type Database = {
           updated_at?: string
           user_id?: string
           workout_plan?: string | null
+        }
+        Relationships: []
+      }
+      workout_templates: {
+        Row: {
+          activity_level: string
+          created_at: string
+          duration_weeks: number
+          exercise_data: Json
+          experience: string
+          goal: string
+          id: string
+          workouts_per_week: number
+        }
+        Insert: {
+          activity_level: string
+          created_at?: string
+          duration_weeks?: number
+          exercise_data: Json
+          experience: string
+          goal: string
+          id?: string
+          workouts_per_week?: number
+        }
+        Update: {
+          activity_level?: string
+          created_at?: string
+          duration_weeks?: number
+          exercise_data?: Json
+          experience?: string
+          goal?: string
+          id?: string
+          workouts_per_week?: number
         }
         Relationships: []
       }

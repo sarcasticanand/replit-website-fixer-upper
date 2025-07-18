@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { generatePersonalizedPlans } from "@/services/perplexityService";
+import { generatePersonalizedPlan, type UserProfile } from "@/services/healthPlanService";
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -21,6 +21,7 @@ export default function Onboarding() {
     age: "",
     height: "",
     weight: "",
+    gender: "male",
     activityLevel: "",
     goals: [],
     dietaryRestrictions: [],
@@ -44,45 +45,43 @@ export default function Onboarding() {
   };
 
   const handleComplete = async () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your Perplexity API key to generate personalized plans.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
-    
     try {
-      // Generate personalized plans using Perplexity API
-      const { workoutPlan, dietPlan } = await generatePersonalizedPlans(formData, apiKey);
-
-      // Store user data and generated plans
-      const userProfileWithPlans = {
-        ...formData,
-        workoutPlan,
-        dietPlan,
-        createdAt: new Date().toISOString()
+      // Convert form data to UserProfile format
+      const userProfile: UserProfile = {
+        age: parseInt(formData.age) || 25,
+        height: parseInt(formData.height) || 170,
+        weight: parseInt(formData.weight) || 70,
+        gender: formData.gender as 'male' | 'female' || 'male',
+        activityLevel: formData.activityLevel as any || 'moderate',
+        primaryGoal: formData.goals?.[0]?.replace(' ', '_').toLowerCase() as any || 'fitness',
+        fitnessExperience: formData.fitnessExperience as any || 'beginner',
+        dietaryRestrictions: formData.dietaryRestrictions || [],
+        preferredWorkoutTime: formData.preferredWorkoutTime || 'morning',
+        healthConditions: formData.healthConditions || []
       };
 
+      // Generate plans using Gemini API
+      const { plan, planId } = await generatePersonalizedPlan(userProfile);
+      
+      // Store data in localStorage for now
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      localStorage.setItem('currentPlan', JSON.stringify(plan));
+      localStorage.setItem('currentPlanId', planId);
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('onboardingComplete', 'true');
-      localStorage.setItem('userProfile', JSON.stringify(userProfileWithPlans));
-      
+
       toast({
-        title: "Setup complete!",
-        description: "Your personalized health plans have been generated!",
+        title: "Welcome to NutriSync!",
+        description: "Your personalized Indian health plan has been generated successfully.",
       });
-      
+
       navigate('/dashboard');
     } catch (error) {
-      console.error("Setup failed:", error);
-      
+      console.error('Error generating plans:', error);
       toast({
-        title: "Setup failed",
-        description: error instanceof Error ? error.message : "Failed to generate personalized plans. Please check your API key and try again.",
+        title: "Error",
+        description: "Failed to generate your personalized plan. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -131,6 +130,19 @@ export default function Onboarding() {
         </div>
 
         <div className="space-y-2">
+          <Label>Gender</Label>
+          <Select onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select your gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
           <Label>Activity Level</Label>
           <Select onValueChange={(value) => setFormData(prev => ({ ...prev, activityLevel: value }))}>
             <SelectTrigger>
@@ -140,8 +152,8 @@ export default function Onboarding() {
               <SelectItem value="sedentary">Sedentary (little to no exercise)</SelectItem>
               <SelectItem value="light">Light activity (1-3 days/week)</SelectItem>
               <SelectItem value="moderate">Moderate activity (3-5 days/week)</SelectItem>
-              <SelectItem value="very-active">Very active (6-7 days/week)</SelectItem>
-              <SelectItem value="extremely-active">Extremely active (2x/day, intense workouts)</SelectItem>
+              <SelectItem value="very_active">Very active (6-7 days/week)</SelectItem>
+              <SelectItem value="extremely_active">Extremely active (2x/day, intense workouts)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -266,21 +278,33 @@ export default function Onboarding() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="apiKey">Perplexity API Key</Label>
-          <Input
-            id="apiKey"
-            type="password"
-            placeholder="Enter your Perplexity API key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="font-mono"
-          />
-          <p className="text-xs text-muted-foreground">
-            Required to generate personalized workout and diet plans. 
-            <a href="https://docs.perplexity.ai/docs/getting-started" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
-              Get your API key here
-            </a>
-          </p>
+          <Label>Health Conditions (optional)</Label>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              "Diabetes",
+              "High Blood Pressure",
+              "Heart Disease",
+              "Arthritis",
+              "Thyroid Issues",
+              "PCOS",
+              "None"
+            ].map((condition) => (
+              <div key={condition} className="flex items-center space-x-2">
+                <Checkbox
+                  id={condition}
+                  checked={formData.healthConditions.includes(condition)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setFormData(prev => ({ ...prev, healthConditions: [...prev.healthConditions, condition] }));
+                    } else {
+                      setFormData(prev => ({ ...prev, healthConditions: prev.healthConditions.filter(c => c !== condition) }));
+                    }
+                  }}
+                />
+                <Label htmlFor={condition}>{condition}</Label>
+              </div>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
