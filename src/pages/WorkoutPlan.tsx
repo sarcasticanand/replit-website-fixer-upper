@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Play, Check, Clock, Target, Dumbbell } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle, Pause, Clock, Target, Dumbbell, Check } from "lucide-react";
 import { Header } from "@/components/Header";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserPlans } from "@/hooks/useUserPlans";
 import { useToast } from "@/hooks/use-toast";
 
 interface Exercise {
@@ -88,11 +90,27 @@ const mockWorkoutPlan: WorkoutDay[] = [
 export default function WorkoutPlan() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>(mockWorkoutPlan);
+  const { user, signOut } = useAuth();
+  const { currentPlan, loading } = useUserPlans();
+  const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    localStorage.clear();
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Use user's workout plan if available, otherwise use mock data
+    if (currentPlan?.workout_plan?.workouts) {
+      setWorkoutPlan(currentPlan.workout_plan.workouts);
+    } else {
+      setWorkoutPlan(mockWorkoutPlan);
+    }
+  }, [user, currentPlan, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -158,6 +176,10 @@ export default function WorkoutPlan() {
     }
   };
 
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading your workout plan...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header isAuthenticated={true} onLogout={handleLogout} />
@@ -168,9 +190,14 @@ export default function WorkoutPlan() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-bold mb-2">Your Workout Plan</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {currentPlan ? 'Your Personalized Workout Plan' : 'Sample Workout Plan'}
+          </h1>
           <p className="text-muted-foreground">
-            Customized based on your fitness goals and current level
+            {currentPlan 
+              ? 'Based on your goals and fitness profile' 
+              : 'Complete your profile setup to get a personalized plan'
+            }
           </p>
         </div>
 

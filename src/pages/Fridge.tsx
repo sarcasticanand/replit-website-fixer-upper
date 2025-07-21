@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Minus, Refrigerator, Search, ChefHat } from "lucide-react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FridgeItem {
   id: string;
@@ -55,12 +56,21 @@ const suggestedRecipes = [
 export default function Fridge() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
   const [items, setItems] = useState<FridgeItem[]>(mockFridgeItems);
   const [searchTerm, setSearchTerm] = useState("");
   const [newItemName, setNewItemName] = useState("");
 
-  const handleLogout = () => {
-    localStorage.clear();
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // In a real app, you'd fetch user's fridge data here
+  }, [user, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -135,7 +145,7 @@ export default function Fridge() {
           </Button>
           <h1 className="text-3xl font-bold mb-2">My Digital Fridge</h1>
           <p className="text-muted-foreground">
-            Track what you have and get recipe suggestions
+            Track your ingredients and get personalized recipe suggestions
           </p>
         </div>
 

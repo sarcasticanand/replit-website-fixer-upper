@@ -1,45 +1,57 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Activity, Target, Calendar, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useUserPlans } from "@/hooks/useUserPlans";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { profile, goals, loading: profileLoading } = useUserProfile();
+  const { currentPlan, loading: plansLoading } = useUserPlans();
 
   useEffect(() => {
-    // Check authentication
-    const isAuth = localStorage.getItem('isAuthenticated');
-    if (!isAuth) {
+    if (!authLoading && !user) {
       navigate('/login');
-      return;
     }
+  }, [authLoading, user, navigate]);
 
-    // Load user data
-    const userProfile = localStorage.getItem('userProfile');
-    const userEmail = localStorage.getItem('userEmail');
-    
-    if (userProfile) {
-      setUser(JSON.parse(userProfile));
-    } else if (userEmail) {
-      setUser({ email: userEmail });
-    }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userProfile');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('onboardingComplete');
-    localStorage.removeItem('tempUser');
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (authLoading || profileLoading || plansLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
   }
+
+  if (!user) {
+    return null;
+  }
+
+  // Calculate dynamic stats based on user data
+  const getProgressPercentage = () => {
+    if (currentPlan?.workout_plan) {
+      // Calculate based on completed workouts in the plan
+      return 75; // Mock for now
+    }
+    return 0;
+  };
+
+  const getWeeklyWorkouts = () => {
+    // This would be calculated from actual user activity
+    return 4;
+  };
+
+  const getStreak = () => {
+    // This would be calculated from user's consistent activity
+    return 12;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,9 +59,14 @@ export default function Dashboard() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back to HealthSync!</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            Welcome back{profile?.user_id ? `` : `, ${user.email}`}!
+          </h1>
           <p className="text-muted-foreground">
-            Here's your personalized health dashboard
+            {goals.length > 0 
+              ? `Working towards: ${goals.map(g => g.goal).join(', ')}`
+              : "Here's your personalized health dashboard"
+            }
           </p>
         </div>
 
@@ -61,11 +78,11 @@ export default function Dashboard() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">75%</div>
+              <div className="text-2xl font-bold">{getProgressPercentage()}%</div>
               <p className="text-xs text-muted-foreground">
-                +5% from yesterday
+                {currentPlan ? 'Based on your current plan' : 'Complete onboarding to see progress'}
               </p>
-              <Progress value={75} className="mt-2" />
+              <Progress value={getProgressPercentage()} className="mt-2" />
             </CardContent>
           </Card>
 
@@ -75,9 +92,9 @@ export default function Dashboard() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">4</div>
+              <div className="text-2xl font-bold">{getWeeklyWorkouts()}</div>
               <p className="text-xs text-muted-foreground">
-                3 more to reach weekly goal
+                {currentPlan ? 'Based on your workout plan' : 'Start a plan to track workouts'}
               </p>
             </CardContent>
           </Card>
@@ -88,9 +105,9 @@ export default function Dashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12 days</div>
+              <div className="text-2xl font-bold">{getStreak()} days</div>
               <p className="text-xs text-muted-foreground">
-                Personal best!
+                {getStreak() > 0 ? 'Keep it up!' : 'Start your streak today!'}
               </p>
             </CardContent>
           </Card>
@@ -101,9 +118,11 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+2.3kg</div>
+              <div className="text-2xl font-bold">
+                {profile?.weight ? `${profile.weight}kg` : 'Set weight'}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Muscle gain this month
+                {profile?.weight ? 'Current weight' : 'Update your profile'}
               </p>
             </CardContent>
           </Card>
@@ -119,29 +138,59 @@ export default function Dashboard() {
                 <CardDescription>Your personalized fitness and nutrition plan for today</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-semibold mb-2">Morning Workout</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Upper body strength training - 45 minutes
-                  </p>
-                  <Button size="sm" onClick={() => navigate('/workout-plan')}>Start Workout</Button>
-                </div>
+                {currentPlan?.workout_plan ? (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Today's Workout</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {currentPlan.workout_plan.workouts?.[0]?.name || 'Personalized workout plan'}
+                    </p>
+                    <Button size="sm" onClick={() => navigate('/workout-plan')}>Start Workout</Button>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Generate Your Plan</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Complete your profile to get a personalized workout plan
+                    </p>
+                    <Button size="sm" onClick={() => navigate('/onboarding')}>Complete Setup</Button>
+                  </div>
+                )}
                 
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-semibold mb-2">Nutrition Goal</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    2,200 calories | 150g protein | 250g carbs | 75g fat
-                  </p>
-                  <Button size="sm" variant="outline">View Meal Plan</Button>
-                </div>
+                {currentPlan?.diet_plan ? (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Today's Nutrition</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Follow your personalized meal plan
+                    </p>
+                    <Button size="sm" variant="outline">View Meal Plan</Button>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Nutrition Planning</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Get a personalized nutrition plan
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => navigate('/onboarding')}>Set Up Nutrition</Button>
+                  </div>
+                )}
                 
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-semibold mb-2">Grocery List</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    8 items ready for shopping - optimized for best prices
-                  </p>
-                  <Button size="sm" variant="outline" onClick={() => navigate('/grocery-cart')}>View List</Button>
-                </div>
+                {currentPlan?.grocery_list ? (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Smart Grocery List</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {currentPlan.grocery_list.length || 8} items ready for shopping
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => navigate('/grocery-cart')}>View List</Button>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Grocery Planning</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Generate optimized grocery lists
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => navigate('/onboarding')}>Set Up Groceries</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -153,17 +202,22 @@ export default function Dashboard() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {!currentPlan && (
+                  <Button className="w-full" onClick={() => navigate('/onboarding')}>
+                    Complete Profile Setup
+                  </Button>
+                )}
                 <Button className="w-full" variant="outline">
                   Log Food
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => navigate('/workout-plan')}>
-                  Start Workout
+                  {currentPlan ? 'Start Workout' : 'View Sample Workout'}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => navigate('/fridge')}>
                   Check Fridge
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => navigate('/grocery-cart')}>
-                  Order Groceries
+                  {currentPlan ? 'Order Groceries' : 'View Sample Cart'}
                 </Button>
               </CardContent>
             </Card>

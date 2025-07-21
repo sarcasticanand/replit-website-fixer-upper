@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ShoppingCart, Truck, IndianRupee } from "lucide-react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserPlans } from "@/hooks/useUserPlans";
 
 interface GroceryItem {
   id: string;
@@ -78,11 +80,27 @@ const mockGroceryItems: GroceryItem[] = [
 export default function GroceryCart() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [items, setItems] = useState<GroceryItem[]>(mockGroceryItems);
+  const { user, signOut } = useAuth();
+  const { currentPlan, loading } = useUserPlans();
+  const [items, setItems] = useState<GroceryItem[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'swiggy' | 'blinkit' | 'zepto'>('blinkit');
 
-  const handleLogout = () => {
-    localStorage.clear();
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Use user's grocery list if available, otherwise use mock data
+    if (currentPlan?.grocery_list && Array.isArray(currentPlan.grocery_list)) {
+      setItems(currentPlan.grocery_list);
+    } else {
+      setItems(mockGroceryItems);
+    }
+  }, [user, currentPlan, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -122,6 +140,10 @@ export default function GroceryCart() {
     });
   };
 
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading your grocery list...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header isAuthenticated={true} onLogout={handleLogout} />
@@ -132,9 +154,14 @@ export default function GroceryCart() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-bold mb-2">Smart Grocery Cart</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {currentPlan ? 'Your Smart Grocery Cart' : 'Sample Grocery Cart'}
+          </h1>
           <p className="text-muted-foreground">
-            Compare prices across platforms and get the best deals
+            {currentPlan 
+              ? 'Based on your personalized meal plan' 
+              : 'Complete your profile to get personalized grocery lists'
+            }
           </p>
         </div>
 
@@ -144,7 +171,9 @@ export default function GroceryCart() {
             <Card>
               <CardHeader>
                 <CardTitle>Your Cart Items</CardTitle>
-                <CardDescription>Based on your weekly meal plan</CardDescription>
+                <CardDescription>
+                  {currentPlan ? 'Based on your personalized meal plan' : 'Sample items - complete setup for personalized lists'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {items.map((item) => (
