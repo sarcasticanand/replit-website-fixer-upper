@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -18,25 +19,32 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate login
     try {
-      // Here you would normally make an API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock success
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userEmail', email);
-      
-      toast({
-        title: "Login successful",
-        description: "Welcome back to HealthSync!",
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      
-      navigate('/dashboard');
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back to HealthSync!",
+        });
+        navigate('/dashboard');
+      }
     } catch (error) {
       toast({
         title: "Login failed",
-        description: "Please check your credentials and try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
