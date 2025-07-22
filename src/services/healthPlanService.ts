@@ -102,14 +102,14 @@ export async function savePlanFeedback(
   completionPercentage?: number
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // Generate temporary user ID for anonymous feedback
+    const tempUserId = crypto.randomUUID();
 
     const { error } = await supabase
       .from('plan_feedback')
       .insert({
         plan_id: planId,
-        user_id: user.id,
+        user_id: tempUserId,
         rating,
         feedback_text: feedbackText,
         completion_percentage: completionPercentage
