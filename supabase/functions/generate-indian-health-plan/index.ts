@@ -35,6 +35,7 @@ serve(async (req) => {
     }
 
     const { userProfile, preferences } = await req.json();
+    console.log('Received request with userProfile:', userProfile);
 
     // Step 1: Try to find base templates from database
     const { data: workoutTemplate } = await supabaseClient

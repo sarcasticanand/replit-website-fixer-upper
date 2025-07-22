@@ -39,6 +39,8 @@ export async function generatePersonalizedPlan(
   preferences: any = {}
 ): Promise<{ plan: HealthPlan; planId: string }> {
   try {
+    console.log('Starting plan generation with profile:', userProfile);
+    
     const { data, error } = await supabase.functions.invoke('generate-indian-health-plan', {
       body: {
         userProfile,
@@ -46,15 +48,24 @@ export async function generatePersonalizedPlan(
       }
     });
 
+    console.log('Edge function response:', { data, error });
+
     if (error) {
       console.error('Error calling edge function:', error);
       throw new Error(error.message || 'Failed to generate plan');
     }
 
+    if (!data) {
+      console.error('No data returned from edge function');
+      throw new Error('No data returned from plan generation');
+    }
+
     if (!data.success) {
+      console.error('Edge function returned error:', data.error);
       throw new Error(data.error || 'Failed to generate plan');
     }
 
+    console.log('Plan generated successfully:', data.planId);
     return {
       plan: data.plan,
       planId: data.planId

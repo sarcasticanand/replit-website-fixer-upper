@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -41,19 +42,37 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Simulate signup
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: "Account created successfully",
-        description: "Please complete your profile setup.",
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName
+          }
+        }
       });
-      
-      // Store temporary user data for onboarding
-      localStorage.setItem('tempUser', JSON.stringify(formData));
-      
-      navigate('/onboarding');
+
+      if (error) {
+        toast({
+          title: "Signup failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Account created successfully",
+          description: "Please complete your profile setup.",
+        });
+        
+        navigate('/onboarding');
+      }
     } catch (error) {
+      console.error('Signup error:', error);
       toast({
         title: "Signup failed",
         description: "Something went wrong. Please try again.",

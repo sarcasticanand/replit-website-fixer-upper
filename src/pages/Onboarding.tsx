@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedPlan, type UserProfile } from "@/services/healthPlanService";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -47,6 +48,18 @@ export default function Onboarding() {
   const handleComplete = async () => {
     setLoading(true);
     try {
+      // Check if user is authenticated with Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in first to generate your plan.",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
+
       // Convert form data to UserProfile format
       const userProfile: UserProfile = {
         age: parseInt(formData.age) || 25,
@@ -61,10 +74,12 @@ export default function Onboarding() {
         healthConditions: formData.healthConditions || []
       };
 
+      console.log('Generating plan for user:', user.id, 'with profile:', userProfile);
+
       // Generate plans using Gemini API
       const { plan, planId } = await generatePersonalizedPlan(userProfile);
       
-      // Store data in localStorage for now
+      // Store data in localStorage for now (for compatibility)
       localStorage.setItem('userProfile', JSON.stringify(userProfile));
       localStorage.setItem('currentPlan', JSON.stringify(plan));
       localStorage.setItem('currentPlanId', planId);
@@ -72,7 +87,7 @@ export default function Onboarding() {
       localStorage.setItem('onboardingComplete', 'true');
 
       toast({
-        title: "Welcome to NutriSync!",
+        title: "Welcome to HealthSync!",
         description: "Your personalized Indian health plan has been generated successfully.",
       });
 
