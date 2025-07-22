@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GEMINI_API_KEY = 'AIzaSyAqVBBx4-1q5YTb0oZ8XKd3FnLtM7nOqCw'; // Free tier key
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,6 +15,11 @@ serve(async (req) => {
   }
 
   try {
+    // Check if API key is available
+    if (!GEMINI_API_KEY) {
+      throw new Error('Gemini API key not configured');
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
