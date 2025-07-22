@@ -256,11 +256,37 @@ Make it authentic, practical, and culturally appropriate for Indian users.`;
   const data = await response.json();
   const generatedText = data.candidates[0].content.parts[0].text;
   
-  // Clean and parse JSON response
-  const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+  console.log('Raw Gemini response:', generatedText);
+  
+  // Clean and parse JSON response - handle common JSON issues
+  let cleanedJson = generatedText;
+  
+  // Remove any markdown code blocks
+  cleanedJson = cleanedJson.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  
+  // Find JSON object
+  const jsonMatch = cleanedJson.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('Invalid JSON response from Gemini');
+    throw new Error('No valid JSON found in Gemini response');
   }
   
-  return JSON.parse(jsonMatch[0]);
+  let jsonStr = jsonMatch[0];
+  
+  // Fix common JSON issues
+  jsonStr = jsonStr
+    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+    .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
+    .replace(/:\s*'([^']*)'/g, ': "$1"') // Replace single quotes with double quotes
+    .replace(/\n/g, ' ') // Replace newlines with spaces
+    .replace(/\s+/g, ' '); // Normalize whitespace
+  
+  console.log('Cleaned JSON string:', jsonStr.substring(0, 500) + '...');
+  
+  try {
+    return JSON.parse(jsonStr);
+  } catch (parseError) {
+    console.error('JSON parse error:', parseError);
+    console.error('Problematic JSON:', jsonStr);
+    throw new Error('Failed to parse Gemini response as JSON');
+  }
 }
