@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,17 @@ import { Header } from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { generatePersonalizedPlan, type UserProfile } from "@/services/healthPlanService";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, goals, dietaryRestrictions, healthConditions, refetch } = useUserProfile();
 
   const [formData, setFormData] = useState({
     age: "",
@@ -31,7 +36,49 @@ export default function Onboarding() {
     healthConditions: []
   });
 
-  const [apiKey, setApiKey] = useState("");
+  // Check if user is authenticated and has completed onboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (authLoading) return;
+
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      // Check if user already has a profile and plans
+      if (profile && goals.length > 0) {
+        toast({
+          title: "Profile already complete",
+          description: "Redirecting to your dashboard...",
+        });
+        navigate('/dashboard');
+        return;
+      }
+
+      setChecking(false);
+    };
+
+    checkOnboardingStatus();
+  }, [authLoading, user, profile, goals, navigate, toast]);
+
+  // Pre-fill form with existing data if available
+  useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        age: profile.age?.toString() || "",
+        height: profile.height?.toString() || "",
+        weight: profile.weight?.toString() || "",
+        activityLevel: profile.activity_level || "",
+        fitnessExperience: profile.fitness_experience || "",
+        preferredWorkoutTime: profile.preferred_workout_time || "",
+        goals: goals.map(g => g.goal) || [],
+        dietaryRestrictions: dietaryRestrictions.map(d => d.restriction) || [],
+        healthConditions: healthConditions.map(h => h.condition) || []
+      }));
+    }
+  }, [profile, goals, dietaryRestrictions, healthConditions]);
 
   const handleNext = () => {
     if (currentStep < 3) {
@@ -48,8 +95,6 @@ export default function Onboarding() {
   const handleComplete = async () => {
     setLoading(true);
     try {
-      // Check if user is authenticated with Supabase
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
           title: "Authentication required",
@@ -59,6 +104,9 @@ export default function Onboarding() {
         navigate('/login');
         return;
       }
+
+      // Save profile data to Supabase
+      await saveProfileToSupabase();
 
       // Convert form data to UserProfile format
       const userProfile: UserProfile = {
@@ -79,11 +127,10 @@ export default function Onboarding() {
       // Generate plans using Gemini API
       const { plan, planId } = await generatePersonalizedPlan(userProfile);
       
-      // Store data in localStorage for now (for compatibility)
+      // Store data in localStorage for compatibility
       localStorage.setItem('userProfile', JSON.stringify(userProfile));
       localStorage.setItem('currentPlan', JSON.stringify(plan));
       localStorage.setItem('currentPlanId', planId);
-      localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('onboardingComplete', 'true');
 
       toast({
@@ -101,6 +148,71 @@ export default function Onboarding() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveProfileToSupabase = async () => {
+    if (!user) return;
+
+    try {
+      // Save or update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          age: parseInt(formData.age) || null,
+          height: parseInt(formData.height) || null,
+          weight: parseInt(formData.weight) || null,
+          activity_level: formData.activityLevel || null,
+          fitness_experience: formData.fitnessExperience || null,
+          preferred_workout_time: formData.preferredWorkoutTime || null,
+        });
+
+      if (profileError) throw profileError;
+
+      // Clear existing goals, dietary restrictions, and health conditions
+      await supabase.from('user_goals').delete().eq('user_id', user.id);
+      await supabase.from('user_dietary_restrictions').delete().eq('user_id', user.id);
+      await supabase.from('user_health_conditions').delete().eq('user_id', user.id);
+
+      // Insert new goals
+      if (formData.goals.length > 0) {
+        const { error: goalsError } = await supabase
+          .from('user_goals')
+          .insert(formData.goals.map(goal => ({
+            user_id: user.id,
+            goal: goal
+          })));
+        if (goalsError) throw goalsError;
+      }
+
+      // Insert new dietary restrictions
+      if (formData.dietaryRestrictions.length > 0) {
+        const { error: restrictionsError } = await supabase
+          .from('user_dietary_restrictions')
+          .insert(formData.dietaryRestrictions.map(restriction => ({
+            user_id: user.id,
+            restriction: restriction
+          })));
+        if (restrictionsError) throw restrictionsError;
+      }
+
+      // Insert new health conditions
+      if (formData.healthConditions.length > 0) {
+        const { error: conditionsError } = await supabase
+          .from('user_health_conditions')
+          .insert(formData.healthConditions.map(condition => ({
+            user_id: user.id,
+            condition: condition
+          })));
+        if (conditionsError) throw conditionsError;
+      }
+
+      // Refresh user profile data
+      await refetch();
+    } catch (error) {
+      console.error('Error saving profile to Supabase:', error);
+      throw error;
     }
   };
 
@@ -324,6 +436,14 @@ export default function Onboarding() {
       </CardContent>
     </Card>
   );
+
+  if (authLoading || checking) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">

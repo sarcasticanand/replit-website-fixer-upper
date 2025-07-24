@@ -25,8 +25,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     );
 
-    // Generate a temporary user ID for anonymous usage
-    const tempUserId = crypto.randomUUID();
+    // Get the authorization header to extract user information
+    const authToken = req.headers.get('Authorization')?.replace('Bearer ', '');
+    let userId = crypto.randomUUID(); // Default to temp ID for anonymous users
+
+    if (authToken) {
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser(authToken);
+        if (user) {
+          userId = user.id;
+          console.log('Authenticated user ID:', userId);
+        }
+      } catch (error) {
+        console.log('Could not get authenticated user, using anonymous ID');
+      }
+    }
 
     const { userProfile, preferences } = await req.json();
     console.log('Received request with userProfile:', userProfile);
@@ -63,7 +76,7 @@ serve(async (req) => {
     const { data: savedPlan, error: saveError } = await supabaseClient
       .from('generated_plans')
       .insert({
-        user_id: tempUserId,
+        user_id: userId,
         workout_plan: aiPlan.workoutPlan,
         diet_plan: aiPlan.dietPlan,
         grocery_list: aiPlan.groceryList,

@@ -41,11 +41,17 @@ export async function generatePersonalizedPlan(
   try {
     console.log('Starting plan generation with profile:', userProfile);
     
+    // Get the current session to pass auth headers
+    const { data: { session } } = await supabase.auth.getSession();
+    
     const { data, error } = await supabase.functions.invoke('generate-indian-health-plan', {
       body: {
         userProfile,
         preferences
-      }
+      },
+      headers: session?.access_token ? {
+        Authorization: `Bearer ${session.access_token}`
+      } : {}
     });
 
     console.log('Edge function response:', { data, error });
